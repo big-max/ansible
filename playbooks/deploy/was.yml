@@ -90,7 +90,11 @@
         su - "{{ was_user }}" -c
         "{{ was_im_path }}/eclipse/tools/imcl install {{ package.stdout }} 
         -installationDirectory {{ was_inst_path }}
+<<<<<<< HEAD
         -properties cic.selector.nl=zh 
+=======
+	-properties cic.selector.nl=zh 
+>>>>>>> 2f0ec354f15f55192f8f562303f41201e678e992
         -repositories {{ downloadpath }}/{{ was_version }} -acceptLicense"
     - name: Install WAS fixpack pretask1  
       shell: >
