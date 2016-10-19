@@ -23,72 +23,69 @@ class OS_Healthcheck:
     self.overall = overall
 	
   def col_basic(self):
-    basic_dict = {'Hostname': '', 'Version': '', 'IP': '', 'Start': ''}
+        basic_dict = {'Hostname': '', 'Version': '', 'IP': '', 'Start': ''}
 
-    basic_dict['Version'] = platform.platform()
-    basic_dict['Hostname'] = socket.getfqdn(socket.gethostname())
-    basic_dict['IP'] = socket.gethostbyname(basic_dict['Hostname'])
-    basic_dict['Start'] = time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(psutil.boot_time())) 
+	basic_dict['Version'] = platform.platform()
+	basic_dict['Hostname'] = socket.getfqdn(socket.gethostname())
+	basic_dict['IP'] = socket.gethostbyname(basic_dict['Hostname'])
+	basic_dict['Start'] = time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(psutil.boot_time())) 
 	
-    detail = os.popen('date;echo;uptime;echo;hostname;echo;lsb_release -a')
-    self.result_detail.write("\n###############Basic Information###############\n" + detail.read())	
-
-    return basic_dict
+	detail = os.popen('date;echo;uptime;echo;hostname;echo;lsb_release -a')
+	self.result_detail.write("\n#################Basic Information#################\n" + detail.read())
+        return basic_dict
 
   def get_status(self, cur_value, warn, error):
-    if cur_value < warn:
-      return 'GOOD'
-    if cur_value >= warn and cur_value < error:
-      return 'WARN'
-    if cur_value >= error:
-      return 'BAD'
-
+        if cur_value < warn:
+	  return 'GOOD'
+	if cur_value >= warn and cur_value < error:
+	  return 'WARN'
+	if cur_value >= error:
+	  return 'BAD'
+  
   def col_runtime(self):
-    cpu_total, memory_total, swap_total, disk_high = 0, 0, 0, 0
-    runtime_dict = {'CPU': '', 'RAM': '', 'Swap': '', 'Disk': ''}
+        cpu_total, memory_total, swap_total, disk_high = 0, 0, 0, 0
+        runtime_dict = {'CPU': '', 'RAM': '', 'Swap': '', 'Disk': ''}
 	
-    for x in range(5):
-      cpu_total += psutil.cpu_percent(interval=2)
-      memory_total += psutil.virtual_memory().percent
-      swap_total += psutil.swap_memory().percent
+	for x in range(5):
+	  cpu_total += psutil.cpu_percent(interval=2)
+	  memory_total += psutil.virtual_memory().percent
+	  swap_total += psutil.swap_memory().percent
 	
-    for i in psutil.disk_partitions():
-      if psutil.disk_usage(i[1])[3] > 5.0 and psutil.disk_usage(i[1])[3] > disk_high:
-        disk_high = psutil.disk_usage(i[1])[3]
-
-    cpu_usage = ("%.2f" % float(cpu_total/5))
-    ram_usage = ("%.2f" % float(memory_total/5))
-    swap_usage = ("%.2f" % float(swap_total/5))
-    disk_usage = ("%.2f" % float(disk_high))
+	for i in psutil.disk_partitions():
+	  if psutil.disk_usage(i[1])[3] > 85.0 and psutil.disk_usage(i[1])[3] > disk_high:
+	    disk_high = psutil.disk_usage(i[1])[3]
 	
-    runtime_dict['CPU'] = ['WARN 50 BAD 70', cpu_usage, self.get_status(float(cpu_usage), 50, 70)]
-    runtime_dict['RAM'] = ['WARN 70 BAD 90', ram_usage, self.get_status(ram_usage, 70.00, 90.00)]
-    runtime_dict['Swap'] = ['WARN 30 BAD 50', swap_usage, self.get_status(swap_usage, 30, 50)]
-    runtime_dict['Disk'] = ['WARN 80 BAD 90', disk_usage, self.get_status(disk_usage, 80, 90)]
+	cpu_usage = ("%.2f" % float(cpu_total/5))
+	ram_usage = ("%.2f" % float(memory_total/5))
+	swap_usage = ("%.2f" % float(swap_total/5))
+	disk_usage = ("%.2f" % float(disk_high))
 	
-    all_status = [runtime_dict['CPU'][2], runtime_dict['RAM'][2], runtime_dict['Swap'][2], runtime_dict['Disk'][2]]
-    if 'BAD' in all_status:
-      self.overall = 2
-    elif 'WARN' in all_status:
-      self.overall = 1
-    else:
-     self.overall = 0
-
-    detail = os.popen("vmstat 2 10;echo;iostat -m 2 10;echo;netstat -n | awk '/^tcp/ {++S[$NF]} END {for(a in S) print a, S[a]}';echo; free -m;echo;df -lh")
-    self.result_detail.write("\n###############Runtime Information###############\n" + detail.read())
+	runtime_dict['CPU'] = ['WARN 50 BAD 70', cpu_usage, self.get_status(float(cpu_usage), 50, 70)]
+	runtime_dict['RAM'] = ['WARN 70 BAD 90', ram_usage, self.get_status(float(ram_usage), 70, 90)]
+	runtime_dict['Swap'] = ['WARN 30 BAD 50', swap_usage, self.get_status(float(swap_usage), 30, 50)]
+	runtime_dict['Disk'] = ['WARN 80 BAD 90', disk_usage, self.get_status(float(disk_usage), 80, 90)]
 	
-    return runtime_dict
-
+	all_status = [runtime_dict['CPU'][2], runtime_dict['RAM'][2], runtime_dict['Swap'][2], runtime_dict['Disk'][2]]
+	if 'BAD' in all_status:
+	   self.overall = 2
+	elif 'WARN' in all_status:
+	   self.overall = 1
+        else:
+  	   self.overall = 0
+	
+	detail = os.popen("vmstat 2 10;echo;iostat -m 2 10;echo;netstat -n | awk '/^tcp/ {++S[$NF]} END {for(a in S) print a, S[a]}';echo; free -m;echo;df -lh")
+	self.result_detail.write("\n#################Runtime Information#################\n" + detail.read())
+        return runtime_dict
+	
   def col_top10(self, count=0):
     j_top10process = {}
     local_count = count
-    p = subp.Popen('ps -eo pcpu,pid,user,comm,etime | sort -r -k1 | head -11', stdout=subp.PIPE, stderr=subp.PIPE,
-                   shell=True)
+    p = subp.Popen('ps -eo pcpu,pid,user,comm,etime | sort -r -k1 | head -11', stdout=subp.PIPE, stderr=subp.PIPE,shell=True)
     output, errors = p.communicate()
     if errors:
         local_count += 1
         if local_count < 4:
-            return top10_processes(local_count)
+            return j_top10processes(local_count)
         else:
             return {"error": "tried 4 times to calculate top 10 processes."}
     processes = output.split('\n')
@@ -102,21 +99,20 @@ class OS_Healthcheck:
             'ELAPSED': process[4]
         }
         j_top10process.update({process_num: item})
-
-    detail = os.popen('ps auxw --sort=%cpu;echo;ps -ef |grep defunc')
-    self.result_detail.write("\n#################Process Information#################\n" + detail.read())
+	
+	detail = os.popen('ps auxw --sort=%cpu;echo;ps -ef |grep defunc')
+	self.result_detail.write("\n#################Process Information#################\n" + detail.read())
 	
     return j_top10process
 
   def col_env(self):
-    cmd = "env | sort -r"
-    rc, stdout, stderr = module.run_command(cmd, use_unsafe_shell=True)
-    if stderr != '' or rc !=0:
-      self.module.fail_json(changed=False, msg="CMD: %s Failure" % cmd,stderr=stderr, rc=rc, stdout = stdout)
-    env = stdout.strip('\n')
-	
-    return env
-
+        cmd = "env | sort -r"
+  	rc, stdout, stderr = module.run_command(cmd, use_unsafe_shell=True)
+  	if stderr != '' or rc !=0:
+  	  self.module.fail_json(changed=False, msg="CMD: %s Failure" % cmd,stderr=stderr, rc=rc, stdout = stdout)
+  	env = stdout.strip('\n')
+        return env
+  
   def col_cron(self):
     try:
         path = '/var/spool/cron/*'
@@ -129,30 +125,28 @@ class OS_Healthcheck:
                     for line in file.readlines():
                         if not line.startswith('#'):
                             if not line.startswith('\n'):
-                               file_content.append(line.replace('\n',''))
-                j_crons.update({name: file_content})
+                                file_content.append(line.replace('\n',''))
+                j_crons.update({name : file_content} )
             except IOError as exc:
                 if exc.errno != errno.EISDIR:
                     raise
     except Exception,error:
         j_crons =  { "error" : error }
-
+		
     return j_crons
-  
+	
 def main():
     global module
     global result_detail
     result_detail.truncate()
-
     module = AnsibleModule(argument_spec=dict(),supports_check_mode=True)
     os_obj = OS_Healthcheck(module)
     json_dict = {}
     basic_info = os_obj.col_basic()
+    runtime_info = os_obj.col_runtime()
+    top10_info = os_obj.col_top10()
     cron_info = os_obj.col_cron()
     env_info = os_obj.col_env()
-    top10_info = os_obj.col_top10()
-    runtime_info = os_obj.col_runtime()
-
     json_dict = {
 	  'status': overall,
 	  'os': {
@@ -169,4 +163,3 @@ def main():
 
 from ansible.module_utils.basic import *
 main()
-
