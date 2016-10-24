@@ -32,8 +32,8 @@ class WAS_Healthcheck:
   
   def col_version(self, instpath):
   
-    mqver_detail = os.popen('dspmqver -a')
-    self.result_detail.write("\n#####MQ RESULT#####\n" + mqver_detail.read())
+    wasver_detail = os.popen(instpath+'/bin/versionInfo.sh')
+    self.result_detail.write("\n#####WAS RESULT#####\n" + wasver_detail.read())
 
     cmd = instpath+"/bin/versionInfo.sh  | grep Version | grep -v version | awk '{print $2}'"	
     rc, stdout, stderr = module.run_command(cmd, use_unsafe_shell=True)
