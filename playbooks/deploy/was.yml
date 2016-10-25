@@ -133,6 +133,7 @@
         -nodePortsFile {{ was_profile_path }}/Dmgr01/properties/nodeportdef.props
         -enableAdminSecurity true -adminUserName {{ was_userid }} -adminPassword {{ was_password }}
         -cellName Default01Cell -nodeName Default01Node -appServerNodeName Default02Node"
+      ignore_errors: true
       when: was_profile_type == 'cell'
                                          
 - name: Restart Environment
