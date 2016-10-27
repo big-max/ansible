@@ -146,9 +146,8 @@ class CallbackModule(CallbackBase):
 
     def UpdateLog(self,values , playbook_uuid, status, type=None):	
 	now = time.time()
-	if status == 'started':
-	   currenttaskname = str(values._task.get_name())
-	   self.db().tasks.update({"playbook_uuid":playbook_uuid, "name":currenttaskname},{'$set':{"status":statuscode.get(status), "updated_at":now}},upsert=False,multi=False)
+	if status == 'started' or str(self.task) == 'TASK: setup':
+	   pass
 	else:
 	   hostsdict=dict(zip(self.task.get_variable_manager().extra_vars['hostname_list'],self.task.get_variable_manager().extra_vars['ip_list']))
            if self.errip:
