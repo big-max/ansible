@@ -39,7 +39,7 @@ class MQ_Healthcheck:
         
   def col_QMGRs(self):
   
-        mqqmgrs_detail = os.popen('dspmq -o all')
+    mqqmgrs_detail = os.popen('dspmq -o all')
 	self.result_detail.write(mqqmgrs_detail.read())
 	
   	cmd = "dspmq | awk '{print $1}' | awk -F '(' '{print $2}' | awk -F ')' '{print $1}'"
@@ -47,11 +47,11 @@ class MQ_Healthcheck:
   	if stderr != '' or rc !=0:
   	  module.fail_json(changed=False, msg="CMD: %s Failure" % cmd,stderr=stderr, rc=rc, stdout = stdout)
   	qmgrs = stdout.rstrip('\n').replace('\n', ', ').split(',')
-        qmgr_list = []	
+    qmgr_list = []	
 	qmgr_dict = {}
-        for qmgr in qmgrs:
+    for qmgr in qmgrs:
 	  status = {'name':'defalut', 'qmgr': 'Running', 'lstr': 'Running', 'chl': 'Running', 'que': 'Good', 'dlq': 'Good'}
-          status['name']=qmgr
+      status['name']=qmgr
 	  qmgr_ret = commands.getoutput('dspmq -m ' + qmgr + " | awk '{print $2}' | awk -F '(' '{print $2}' | awk -F ')' '{print $1}'")
 	  if 'Running' in qmgr_ret:
     	        lstr_ret = commands.getoutput('ps -ef | grep runmqlsr | grep ' + qmgr + ' | grep -v grep')
@@ -77,9 +77,11 @@ class MQ_Healthcheck:
 		self.result_detail.write(que_detail.read())
 	  else:
 	    status['qmgr'] = 'Stopped'
-          
-	  #qmgr_dict[qmgr] = status	
-	  #qmgr_list.append(qmgr_dict)
+		status['lstr'] = 'Stopped'
+		status['chl'] = 'Stopped'
+		status['que'] = 'Stopped'
+		status['dlq'] = 'Stopped'
+
 	  qmgr_list.append(status)
 	  qmgr_dict = {}
   	return qmgr_list
@@ -114,7 +116,7 @@ def main():
     json_dict['mq'] = {'Version': version_info, 'InstallPath': path_info, 'QMGRs': qmgrs_info, 'System Paramters': sys_info}
     global overall
     overall_str = str(qmgrs_info)
-    if overall_str.find('Critical') != -1:
+    if overall_str.find('Critical') != -1 or overall_str.find('Stopped') != -1:
 	  json_dict['overall'] = 2
     elif overall_str.find('Warning') != -1:
 	  json_dict['overall'] = 1

@@ -23,19 +23,21 @@ class OS_Healthcheck:
     self.overall = overall
 	
   def col_basic(self):
-        basic_dict = {'Hostname': '', 'Version': '', 'IP': '', 'Start': ''}
+    basic_dict = {'Hostname': '', 'Version': '', 'IP': '', 'Start': ''}
 
 	basic_dict['Version'] = platform.platform()
 	basic_dict['Hostname'] = socket.getfqdn(socket.gethostname())
 	basic_dict['IP'] = socket.gethostbyname(basic_dict['Hostname'])
 	basic_dict['Start'] = time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(psutil.boot_time())) 
 	
+	detail = os.popen('date;echo;uptime;echo;hostname;echo;oslevel -s;echo;errpt;echo;prtconf')
+	
 	detail = os.popen('date;echo;uptime;echo;hostname;echo;lsb_release -a')
 	self.result_detail.write("\n#################Basic Information#################\n" + detail.read())
         return basic_dict
 
   def get_status(self, cur_value, warn, error):
-        if cur_value < warn:
+    if cur_value < warn:
 	  return 'GOOD'
 	if cur_value >= warn and cur_value < error:
 	  return 'WARN'
@@ -43,8 +45,8 @@ class OS_Healthcheck:
 	  return 'BAD'
   
   def col_runtime(self):
-        cpu_total, memory_total, swap_total, disk_high = 0, 0, 0, 0
-        runtime_dict = {'CPU': '', 'RAM': '', 'Swap': '', 'Disk': ''}
+    cpu_total, memory_total, swap_total, disk_high = 0, 0, 0, 0
+    runtime_dict = {'CPU': '', 'RAM': '', 'Swap': '', 'Disk': ''}
 	
 	for x in range(5):
 	  cpu_total += psutil.cpu_percent(interval=2)
@@ -70,12 +72,17 @@ class OS_Healthcheck:
 	   self.overall = 2
 	elif 'WARN' in all_status:
 	   self.overall = 1
-        else:
+    else:
   	   self.overall = 0
 	
-	detail = os.popen("vmstat 2 10;echo;iostat -m 2 10;echo;netstat -n | awk '/^tcp/ {++S[$NF]} END {for(a in S) print a, S[a]}';echo; free -m;echo;df -lh")
+	if os == 'linux':
+	  detail = os.popen("vmstat 2 10;echo;iostat -m 2 10;echo;netstat -n | awk '/^tcp/ {++S[$NF]} END {for(a in S) print a, S[a]}';echo; free -m;echo;df -lh")
+	elseif os == 'aix':
+	  detail = os.popen("vmstat 2 10;echo;iostat -m 2 10;echo;netstat -n | awk '/^tcp/ {++S[$NF]} END {for(a in S) print a, S[a]}';echo; svmon -G -i 2 5;echo;df -g;echo; lsps -a")
+	
 	self.result_detail.write("\n#################Runtime Information#################\n" + detail.read())
-        return runtime_dict
+	
+    return runtime_dict
 	
   def col_top10(self, count=0):
     j_top10process = {}
@@ -100,7 +107,11 @@ class OS_Healthcheck:
         }
         j_top10process.update({process_num: item})
 	
+	for linux
 	detail = os.popen('ps auxw --sort=%cpu;echo;ps -ef |grep defunc')
+	for aix
+	detail = os.popen('ps auxw | sort -rn +2;echo;ps -ef |grep defunc')
+	
 	self.result_detail.write("\n#################Process Information#################\n" + detail.read())
 	
     return j_top10process
