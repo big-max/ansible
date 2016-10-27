@@ -70,7 +70,7 @@
          shell: installp -acgXYd . all chdir="{{ downloadpath }}/{{ mq_version }}/MQServer"
        - name: Install MQ fixpack for AIX
          shell: installp -acgXYd . all chdir="{{ downloadpath }}/{{ mq_version }}/fp"
-      when: mq_fp != '-'
+         when: mq_fp != '-'
       when: ansible_distribution == 'AIX'
     - name: Add the pre-defined user
       user: name="{{ mq_user }}" group=mqm append=yes
