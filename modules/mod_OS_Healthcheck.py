@@ -24,8 +24,7 @@ class OS_Healthcheck:
 	
   def col_basic(self):
     basic_dict = {'Hostname': '', 'Version': '', 'IP': '', 'Start': ''}
-
-	basic_dict['Version'] = platform.platform()
+    basic_dict['Version'] = platform.platform()
 	basic_dict['Hostname'] = socket.getfqdn(socket.gethostname())
 	basic_dict['IP'] = socket.gethostbyname(basic_dict['Hostname'])
 	basic_dict['Start'] = time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(psutil.boot_time())) 
