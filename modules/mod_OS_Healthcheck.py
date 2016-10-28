@@ -120,10 +120,10 @@ class OS_Healthcheck:
 
   def col_env(self):
     cmd = "env | sort -r"
-  	rc, stdout, stderr = module.run_command(cmd, use_unsafe_shell=True)
-  	if stderr != '' or rc !=0:
-  	  self.module.fail_json(changed=False, msg="CMD: %s Failure" % cmd,stderr=stderr, rc=rc, stdout = stdout)
-  	env = stdout.strip('\n')
+    rc, stdout, stderr = module.run_command(cmd, use_unsafe_shell=True)
+    if stderr != '' or rc !=0:
+      self.module.fail_json(changed=False, msg="CMD: %s Failure" % cmd,stderr=stderr, rc=rc, stdout = stdout)
+    env = stdout.strip('\n')
 	
     return env
   

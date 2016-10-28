@@ -53,17 +53,18 @@ class MQ_Sync:
         inipath = commands.getoutput('grep \"DataPath.*' + qmgr + "\" /var/mqm/mqs.ini | awk -F '=' '{print $2}'")
         if inipath == '':
           inipath = '/var/mqm/qmgrs/' + qmgr
+	
+        if os.path.exists(inipath + '/qm.ini'):  
+          file_object = open(inipath + '/qm.ini', 'r')
+          config_str = file_object.read()
+          for config_item in config_dict.keys():
+            search_Obj = re.search(config_item + "=(.+)\n", config_str)
+            if search_Obj:
+             config_dict[config_item] = search_Obj.group(1)
+          file_object.close()
 	  
-        file_object = open(inipath + '/qm.ini', 'r')
-        config_str = file_object.read()
-        for config_item in config_dict.keys():
-          search_Obj = re.search(config_item + "=(.+)\n", config_str)
-          if search_Obj:
-           config_dict[config_item] = search_Obj.group(1)
-        file_object.close()
-	  
-        status['config'] = config_dict
-        data_list.append(status)
+          status['config'] = config_dict
+          data_list.append(status)
 	  
     return data_list
 	
