@@ -152,7 +152,7 @@
     "Download WAS binary files" : "下载WAS安装文件",
     "Uncompress WAS binary files" : "解压WAS安装文件",
     "Download WAS fixpack files" : "下载WAS补丁文件",
-    "Uncompress WAS fixpack files" : "下载WAS补丁文件",
+    "Uncompress WAS fixpack files" : "解压WAS补丁文件",
     "Update the hostname of target servers for AIX" : "更新操作系统主机名",
     "Update the hostname of target servers" : "更新操作系统主机名"
   }
