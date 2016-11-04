@@ -20,6 +20,8 @@ class db2hc:
   	    cmd="ps -ef|grep -i db2sysc|grep -v grep|awk '{print $1}'"
   	    stdout=self.run_command(cmd)
   	    instance=stdout.strip('\n').strip().split('\n')
+            if instance[0] == '':
+                instance=[]
   	    return instance
   	    
   	   	
@@ -216,7 +218,8 @@ def main():
     json_dict={}
     json_dict['db2']={"instance":{}}
     inst_list=[]
-    for i in instance:
+    if len(instance) != 0:
+     for i in instance:
        cmd="su - "+i+" -c 'db2 get dbm cfg '"
        stdout=db.run_command(cmd)
        header="===============check instnace "+i+" start==============="
@@ -261,22 +264,23 @@ def main():
             db_list.append(json_db_dict)
        json_inst_dict[i]=db_list
        inst_list.append(json_inst_dict)
-    json_dict['db2']['instance']=inst_list
+     json_dict['db2']['instance']=inst_list
 
-    json_dict['db2']["System Paramters"]=db.col_system()
+     json_dict['db2']["System Paramters"]=db.col_system()
     
            
-    json_str=json.dumps(json_dict) 
-    if 'ERROR' in json_str:
-    	     json_dict['overall']=2
-    elif 'WARNING' in json_str:
+     json_str=json.dumps(json_dict) 
+     if 'ERROR' in json_str:
+   	     json_dict['overall']=2
+     elif 'WARNING' in json_str:
     	     json_dict['overall']=1
-    else:
+     else:
     	    json_dict['overall']=0
-    
-    jsonstr=json.dumps(json_dict) 
+    else:
+      json_dict['db2']['instance']='no instance'
+        
+    jsonstr=json.dumps(json_dict)
     db.module.exit_json(changed=True, msg="CMD: successed", stdout=jsonstr, stderr="")
-
 
 from ansible.module_utils.basic import *
 main()
