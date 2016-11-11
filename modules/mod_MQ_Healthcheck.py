@@ -13,7 +13,10 @@ class MQ_Healthcheck:
 
   def __init__(self, module):
     self.module = module
-    os.environ['PATH'] = '/opt/mqm/bin:' + os.environ['PATH']
+    if platform.platform().find('Linux') != -1: 
+      os.environ['PATH'] = '/opt/mqm/bin:' + os.environ['PATH']
+    else:
+      os.environ['PATH'] = '/usr/mqm/bin:' + os.environ['PATH']
     global result_detail, overall
     self.result_detail = result_detail
     self.overall = overall
@@ -88,16 +91,16 @@ class MQ_Healthcheck:
     return qmgr_list
   
   def col_system(self):
-    cmd = ". /tmp/mqconfig | grep -v mqconfig | grep -E 'PASS|FAIL|WARN' | grep -v shell | awk '{print $1,$(NF-1),$NF}'"
-    rc, stdout, stderr = module.run_command(cmd, use_unsafe_shell=True)
-    if stderr != '' or rc !=0:
-      module.fail_json(changed=False, msg="CMD: %s Failure" % cmd,stderr=stderr, rc=rc, stdout = stdout)
-    tmp = stdout.rstrip('\n').replace(' ', ':').replace('\n', ',')
+    cmd = "/usr/bin/sh . /tmp/mqconfig | grep -v mqconfig | grep -E 'PASS|FAIL|WARN' | grep -v -E 'ksh|shell' | awk '{print $1,$(NF-1),$NF}'"
+    #rc, stdout, stderr = module.run_command(cmd, use_unsafe_shell=True)
+    #if stderr != '' or rc !=0:
+    #  module.fail_json(changed=False, msg="CMD: %s Failure" % cmd,stderr=stderr, rc=rc, stdout = stdout)
+    tmp = commands.getoutput(cmd).rstrip('\n').replace(' ', ':').replace('\n', ',')
     sys_paras = {}
     tmp_list = []
     for l in tmp.split(','):
       tmp_list = l.split(':')
-      sys_paras[tmp_list[0]] = [tmp_list[1][3:], tmp_list[2]]
+      sys_paras[tmp_list[0]] = [tmp_list[1], tmp_list[2]]
       tmp_list = []
 
     return sys_paras

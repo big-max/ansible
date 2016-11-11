@@ -1,21 +1,23 @@
 ---
 - name: Have health check for MQ servers
   hosts: all
-  gather_facts: false
+  gather_facts: true
   strategy: linear
   vars:
       date: "{{ lookup('pipe', 'date +%Y%m%d') }}"
   tasks:
-    - name: check if python module psutil exists
-      command: python -c "import psutil"
-      register: check_output
-      ignore_errors: true
-    - name: copy python module to target system
-      unarchive: src=/opt/tornado/tools/psutil-4.3.0.tar.gz dest=/tmp copy=yes
-      when: check_output.stderr.find('ImportError') != -1
-    - name: install python module
-      command: python setup.py install chdir=/tmp/psutil-4.3.0
-      when: check_output.stderr.find('ImportError') != -1
+    - block:
+       - name: check if python module psutil exists
+         command: python -c "import psutil"
+         register: check_output
+         ignore_errors: true
+       - name: copy python module to target system
+         unarchive: src=/opt/tornado/tools/psutil-4.3.0.tar.gz dest=/tmp copy=yes
+         when: check_output.stderr.find('ImportError') != -1
+       - name: install python module
+         command: python setup.py install chdir=/tmp/psutil-4.3.0
+         when: check_output.stderr.find('ImportError') != -1 
+      when: ansible_distribution != 'AIX'
     - name: upload mqconfig script
       copy: src=/opt/tornado/tools/mqconfig dest=/tmp/mqconfig mode="a+x"
     - name: retrieve os summary health check data

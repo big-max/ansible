@@ -4,7 +4,6 @@ import glob,errno,os
 import json
 import platform
 import commands
-import psutil
 import time
 import socket
 import sys
@@ -27,7 +26,8 @@ class OS_Healthcheck:
     basic_dict['Version'] = platform.platform()
     basic_dict['Hostname'] = socket.getfqdn(socket.gethostname())
     basic_dict['IP'] = socket.gethostbyname(basic_dict['Hostname'])
-    basic_dict['Start'] = time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(psutil.boot_time())) 
+#    basic_dict['Start'] = time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(psutil.boot_time())) 
+    basic_dict['Start'] = commands.getoutput('uptime') 
 	
     if platform.platform().find('Linux') != -1:
       detail = os.popen('date;echo;uptime;echo;hostname;echo;lsb_release -a')
@@ -50,24 +50,35 @@ class OS_Healthcheck:
     cpu_total, memory_total, swap_total, disk_high = 0, 0, 0, 0
     runtime_dict = {'CPU': '', 'RAM': '', 'Swap': '', 'Disk': ''}
 	
-    for x in range(5):
-      cpu_total += psutil.cpu_percent(interval=2)
-      memory_total += psutil.virtual_memory().percent
-      swap_total += psutil.swap_memory().percent
+    if platform.platform().find('Linux') != -1:
+      import psutil
+      for x in range(5):
+        cpu_total += psutil.cpu_percent(interval=2)
+        memory_total += psutil.virtual_memory().percent
+        swap_total += psutil.swap_memory().percent
 	
-    for i in psutil.disk_partitions():
-      if psutil.disk_usage(i[1])[3] > 85.0 and psutil.disk_usage(i[1])[3] > disk_high:
-        disk_high = psutil.disk_usage(i[1])[3]
+      for i in psutil.disk_partitions():
+        if psutil.disk_usage(i[1])[3] > disk_high:
+          disk_high = psutil.disk_usage(i[1])[3]
 	
-    cpu_usage = ("%.2f" % float(cpu_total/5))
-    ram_usage = ("%.2f" % float(memory_total/5))
-    swap_usage = ("%.2f" % float(swap_total/5))
-    disk_usage = ("%.2f" % float(disk_high))
+      cpu_usage = ("%.2f" % float(cpu_total/5))
+      ram_usage = ("%.2f" % float(memory_total/5))
+      swap_usage = ("%.2f" % float(swap_total/5))
+      disk_usage = ("%.2f" % float(disk_high))
 	
-    runtime_dict['CPU'] = ['WARN 50 BAD 70', cpu_usage, self.get_status(float(cpu_usage), 50, 70)]
-    runtime_dict['RAM'] = ['WARN 70 BAD 90', ram_usage, self.get_status(float(ram_usage), 70, 90)]
-    runtime_dict['Swap'] = ['WARN 30 BAD 50', swap_usage, self.get_status(float(swap_usage), 30, 50)]
-    runtime_dict['Disk'] = ['WARN 80 BAD 90', disk_usage, self.get_status(float(disk_usage), 80, 90)]
+      runtime_dict['CPU'] = ['WARN 50 BAD 70', cpu_usage, self.get_status(float(cpu_usage), 50, 70)]
+      runtime_dict['RAM'] = ['WARN 70 BAD 90', ram_usage, self.get_status(float(ram_usage), 70, 90)]
+      runtime_dict['Swap'] = ['WARN 30 BAD 50', swap_usage, self.get_status(float(swap_usage), 30, 50)]
+      runtime_dict['Disk'] = ['WARN 80 BAD 90', disk_usage, self.get_status(float(disk_usage), 80, 90)]
+    else:
+      cpu_usage = commands.getoutput("vmstat 2 10 | tail -10 | awk 'BEGIN {sum=0;} {sum+=$16} END{print int(100-sum/10)}'")
+      swap_usage = commands.getoutput("lsps -s | grep -v Used | awk '{print $2}'")
+      disk_usage = commands.getoutput("df -g | grep -v Used | awk '{print $4}'").split('\n')
+
+      runtime_dict['CPU'] = ['WARN 50 BAD 70', cpu_usage, self.get_status(float(cpu_usage), 50, 70)]
+      runtime_dict['RAM'] = ['WARN 70 BAD 90', '-', self.get_status('-', 70, 90)]
+      runtime_dict['Swap'] = ['WARN 30 BAD 50', swap_usage, self.get_status(float(swap_usage.strip('%')), 30, 50)]
+      runtime_dict['Disk'] = ['WARN 80 BAD 90', max(disk_usage).strip('%'), self.get_status(float(max(disk_usage).strip('%')), 80, 90)] 
 	
     all_status = [runtime_dict['CPU'][2], runtime_dict['RAM'][2], runtime_dict['Swap'][2], runtime_dict['Disk'][2]]
     if 'BAD' in all_status:
