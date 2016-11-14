@@ -49,6 +49,9 @@ class MQ_Healthcheck:
     rc, stdout, stderr=module.run_command(cmd, use_unsafe_shell=True)
     if stderr != '' or rc !=0:
       module.fail_json(changed=False, msg="CMD: %s Failure" % cmd,stderr=stderr, rc=rc, stdout = stdout)
+    if stdout == '':
+      return [] 
+
     qmgrs = stdout.rstrip('\n').replace('\n', ', ').split(',')
     qmgr_list = []	
     qmgr_dict = {}
@@ -91,16 +94,16 @@ class MQ_Healthcheck:
     return qmgr_list
   
   def col_system(self):
-    cmd = "/usr/bin/sh . /tmp/mqconfig | grep -v mqconfig | grep -E 'PASS|FAIL|WARN' | grep -v -E 'ksh|shell' | awk '{print $1,$(NF-1),$NF}'"
-    #rc, stdout, stderr = module.run_command(cmd, use_unsafe_shell=True)
-    #if stderr != '' or rc !=0:
-    #  module.fail_json(changed=False, msg="CMD: %s Failure" % cmd,stderr=stderr, rc=rc, stdout = stdout)
+    cmd = ". /tmp/mqconfig | grep -v mqconfig | grep -E 'PASS|FAIL|WARN' | grep -v -E 'ksh|shell' | awk '{print $1,$(NF-1),$NF}'"
     tmp = commands.getoutput(cmd).rstrip('\n').replace(' ', ':').replace('\n', ',')
     sys_paras = {}
     tmp_list = []
     for l in tmp.split(','):
       tmp_list = l.split(':')
-      sys_paras[tmp_list[0]] = [tmp_list[1], tmp_list[2]]
+      if tmp_list[1].find('Tuned') != -1:
+        sys_paras[tmp_list[0]] = ["Auto", tmp_list[2]]
+      else:
+        sys_paras[tmp_list[0]] = [tmp_list[1][3:], tmp_list[2]]
       tmp_list = []
 
     return sys_paras

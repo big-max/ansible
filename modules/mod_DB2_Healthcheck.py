@@ -16,7 +16,7 @@ class db2hc:
         return stdout
   	    	   
      
-  def col_instance(self):
+  def col_runing_instance(self):
   	    cmd="ps -ef|grep -i db2sysc|grep -v grep|awk '{print $1}'"
   	    stdout=self.run_command(cmd)
   	    instance=stdout.strip('\n').strip().split('\n')
@@ -24,7 +24,41 @@ class db2hc:
                 instance=[]
   	    return instance
   	    
-  	   	
+  def col_os_info(self):
+  	   cmd="uname -s"
+  	   stdout=self.run_command(cmd)
+  	   osinfo=stdout.strip('\n').strip()
+  	   return osinfo
+  
+  def col_all_version(self):
+  	   osinfo=self.col_os_info()
+  	   if osinfo  == 'Linux' and os.path.exists("/opt/ibm/db2"):
+  	   	  cmd="ls /opt/ibm/db2/"
+  	   	  stdout=self.run_command(cmd)
+  	   	  all_version=stdout.strip('\n').strip().split('\n')
+  	   elif osinfo  == 'AIX' and os.path.exists("/opt/IBM/db2"):
+  	   	  cmd="ls /opt/IBM/db2/"
+  	   	  stdout=self.run_command(cmd)
+  	   	  all_version=stdout.strip('\n').strip().split('\n')
+  	   else:
+  	   	  all_version=[]  	   	  
+  	   return all_version
+  	  
+  def col_all_instance(self):
+  	   versions=self.col_all_version()
+  	   osinfo=self.col_os_info()
+  	   all_instance=[]
+  	   if len(versions) !=0 and osinfo == 'Linux':
+  	   	   for v in versions:
+  	   	   	   cmd="/opt/ibm/db2/"+v+"/instance/db2ilist"
+  	   	   	   stdout=self.run_command(cmd)
+  	   	   	   all_instance.extend(stdout.strip('\n').strip().split('\n'))
+  	   elif len(versions) !=0 and osinfo == 'AIX':
+  	   	   for v in versions:
+  	   	   	   cmd="/opt/IBM/db2/"+v+"/instance/db2ilist"
+  	   	   	   stdout=self.run_command(cmd)
+  	   	   	   all_instance.extend(stdout.strip('\n').strip().split('\n'))
+	   return all_instance
         
   def col_level(self,inst):
   	   cmd="su - " + inst  + " -c 'db2level'|grep -i 'Informational'|awk -F'\"' '{print $2}'|awk '{print $2}'"
@@ -61,24 +95,28 @@ class db2hc:
   	   return database
   	  
   def col_system(self):
-  	  cmd="cat /proc/meminfo|grep 'MemTotal'|awk -F' ' '{print $2}'"
-  	  stdout=self.run_command(cmd)
-  	  MEM=stdout.strip('\n').strip()
-  	  MEM_GB=int(round(int(MEM)/1024/1024))
-  	  MEM_B=MEM_GB*1024*1024*1024
-  	  SHMMNI=str(256*MEM_GB)
-  	  SHMMAX=str(MEM_B)
-  	  SHMALL=str(MEM_B*2)
-  	  SEMMNI=str(256*MEM_GB)
-  	  MSGMNI=str(1024*MEM_GB)
-  	  SEM='250\t25600\t32\t'+str(SEMMNI)
+          osinfo=self.col_os_info()
+          if osinfo == 'Linux':
+  	     cmd="cat /proc/meminfo|grep 'MemTotal'|awk -F' ' '{print $2}'"
+  	     stdout=self.run_command(cmd)
+  	     MEM=stdout.strip('\n').strip()
+  	     MEM_GB=int(round(int(MEM)/1024/1024))
+  	     MEM_B=MEM_GB*1024*1024*1024
+  	     SHMMNI=str(256*MEM_GB)
+  	     SHMMAX=str(MEM_B)
+  	     SHMALL=str(MEM_B*2)
+  	     SEMMNI=str(256*MEM_GB)
+  	     MSGMNI=str(1024*MEM_GB)
+  	     SEM='250\t25600\t32\t'+str(SEMMNI)
 
-  	  std_kernel={'shmmni':SHMMNI,'shmmax':SHMMAX,'shmall':SHMALL,'sem':SEM,'msgmni':MSGMNI,'msgmax':'65536','msgmnb':'65536'}
-  	  for k,v in std_kernel.items():	
+  	     std_kernel={'shmmni':SHMMNI,'shmmax':SHMMAX,'shmall':SHMALL,'sem':SEM,'msgmni':MSGMNI,'msgmax':'65536','msgmnb':'65536'}
+  	     for k,v in std_kernel.items():	
   	  	cmd="sysctl -a|grep -w "+k+" |awk -F'=' '{print $2}'"
   	  	stdout=self.run_command(cmd)
   	  	cur_v=stdout.strip('\n').strip()
-  	  	std_kernel[k]=[cur_v,v]	    
+  	  	std_kernel[k]=[cur_v,v]	   
+          else:
+              std_kernel={'shmmni':['ok','ok'],'shmmax':['ok','ok'],'shmall':['ok','ok'],'sem':['ok','ok'],'msgmni':['ok','ok'],'msgmax':['ok','ok'],'msgmnb':['ok','ok']}
   	  return std_kernel
 	
 
@@ -214,31 +252,39 @@ def main():
     overall_status=0
     module = AnsibleModule(argument_spec = dict(),supports_check_mode=True)
     db=db2hc(module)
-    instance=db.col_instance()
+    instance=db.col_runing_instance()
+    all_instance=db.col_all_instance()
+    
     json_dict={}
     json_dict['db2']={"instance":{}}
     inst_list=[]
-    if len(instance) != 0:
-     for i in instance:
-       cmd="su - "+i+" -c 'db2 get dbm cfg '"
-       stdout=db.run_command(cmd)
-       header="===============check instnace "+i+" start==============="
-       db.col_writefile(header,stdout)
-       cmd="su - "+i+" -c 'db2set -all'" 
-       stdout=db.run_command(cmd)
-       header="===============db2set paramter==============="
-       db.col_writefile(header,stdout)
-       cmd="su - "+i+" -c 'db2 list db directory'" 
-       stdout=db.run_command(cmd)
-       header="=============== database info ==============="
-       db.col_writefile(header,stdout)
+    if len(all_instance) != 0:
+     for i in all_instance:
        json_inst_dict={i:{}}
-       level,path=db.col_level(i)
-       json_inst_dict[i]={'level':level}
+       if i not in instance:
+         json_inst_dict[i]=0
+         header="===============check instnace "+i+" start==============="
+         res="not runing"
+         db.col_writefile(header,res)
+       else:
+         cmd="su - "+i+" -c 'db2 get dbm cfg '"
+         stdout=db.run_command(cmd)
+         header="===============check instnace "+i+" start==============="
+         db.col_writefile(header,stdout)
+         cmd="su - "+i+" -c 'db2set -all'" 
+         stdout=db.run_command(cmd)
+         header="===============db2set paramter==============="
+         db.col_writefile(header,stdout)
+         cmd="su - "+i+" -c 'db2 list db directory'" 
+         stdout=db.run_command(cmd)
+         header="=============== database info ==============="
+         db.col_writefile(header,stdout)
+         level,path=db.col_level(i)
+         json_inst_dict[i]={'level':level}
        
-       dbs=db.col_database(i)
-       db_list=[]
-       for d in dbs:
+         dbs=db.col_database(i)
+         db_list=[]
+         for d in dbs:
             cmd='su - '+i+' -c " db2 connect to '+d+'>/dev/null;db2 get snapshot for db on '+d+';db2 terminate >/dev/null"'
             stdout=db.run_command(cmd)
             header="===============db2 database snapshot ==============="
@@ -262,7 +308,7 @@ def main():
             json_db_dict['db']['locktimeout']=snap['snap_locktimeout']
             json_db_dict['db']['sortoverflow']=snap['sort_overflow_percent']
             db_list.append(json_db_dict)
-       json_inst_dict[i]=db_list
+         json_inst_dict[i]=db_list
        inst_list.append(json_inst_dict)
      json_dict['db2']['instance']=inst_list
 
@@ -277,7 +323,7 @@ def main():
      else:
     	    json_dict['overall']=0
     else:
-      json_dict['db2']['instance']='no instance'
+      json_dict['db2']['instance']=[]
         
     jsonstr=json.dumps(json_dict)
     db.module.exit_json(changed=True, msg="CMD: successed", stdout=jsonstr, stderr="")
