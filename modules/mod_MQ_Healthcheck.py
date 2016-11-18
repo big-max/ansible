@@ -120,7 +120,7 @@ def main():
     path_info = mq.col_instpath()
     qmgrs_info = mq.col_QMGRs()
     sys_info = mq.col_system()
-    json_dict['mq'] = {'Version': version_info, 'InstallPath': path_info, 'QMGRs': qmgrs_info, 'System Paramters': sys_info}
+    json_dict['mq'] = {'Version': version_info, 'InstallPath': path_info, 'QMGRs': qmgrs_info, 'System Paramters': sys_info, 'Platform': platform.platform().split('-')[0]}
     global overall
     overall_str = str(qmgrs_info)
     if overall_str.find('Critical') != -1 or overall_str.find('Stopped') != -1:

@@ -76,7 +76,7 @@ class OS_Healthcheck:
       disk_usage = commands.getoutput("df -g | grep -v Used | awk '{print $4}'").split('\n')
 
       runtime_dict['CPU'] = ['WARN 50 BAD 70', float(cpu_usage), self.get_status(float(cpu_usage), 50, 70)]
-      runtime_dict['RAM'] = ['WARN 70 BAD 90', 0.00, self.get_status(0.00, 70, 90)]
+      runtime_dict['RAM'] = ['WARN 70 BAD 90', '-', '-']
       runtime_dict['Swap'] = ['WARN 30 BAD 50', float(swap_usage.strip('%')), self.get_status(float(swap_usage.strip('%')), 30, 50)]
       runtime_dict['Disk'] = ['WARN 80 BAD 90', float(max(disk_usage).strip('%')), self.get_status(float(max(disk_usage).strip('%')), 80, 90)] 
 	

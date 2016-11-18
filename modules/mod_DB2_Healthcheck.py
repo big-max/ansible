@@ -324,6 +324,7 @@ def main():
     	    json_dict['overall']=0
     else:
       json_dict['db2']['instance']=[]
+      json_dict['overall']=-1
         
     jsonstr=json.dumps(json_dict)
     db.module.exit_json(changed=True, msg="CMD: successed", stdout=jsonstr, stderr="")
