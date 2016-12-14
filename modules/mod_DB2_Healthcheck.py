@@ -116,7 +116,8 @@ class db2hc:
   	  	cur_v=stdout.strip('\n').strip()
   	  	std_kernel[k]=[cur_v,v]	   
           else:
-              std_kernel={'shmmni':['ok','ok'],'shmmax':['ok','ok'],'shmall':['ok','ok'],'sem':['ok','ok'],'msgmni':['ok','ok'],'msgmax':['ok','ok'],'msgmnb':['ok','ok']}
+            std_kernel={'shmmni':['auto','auto'],'shmmax':['auto','auto'],'shmall':['auto','auto'],'sem':['auto','auto'],'msgmni':['auto','auto'],
+'msgmax':['auto','auto'],'msgmnb':['auto','auto']}
   	  return std_kernel
 	
 
