@@ -67,9 +67,9 @@
       when: ansible_distribution != 'AIX' 
     - block:
        - name: Install MQ binary for AIX
-         shell: installp -acgXYd . all chdir="{{ downloadpath }}/{{ mq_version }}/MQServer"
+         shell: installp -acgXYd {{ downloadpath }}/{{ mq_version }}/MQServer all
        - name: Install MQ fixpack for AIX
-         shell: installp -acgXYd . all chdir="{{ downloadpath }}/{{ mq_version }}/fp"
+         shell: installp -acgXYd {{ downloadpath }}/{{ mq_version }}/fp all
          when: mq_fp != '-'
       when: ansible_distribution == 'AIX'
     - name: Add the pre-defined user
