@@ -50,13 +50,14 @@ def check_others():
            run('rpm -ivh /tmp/itoatools/unzip-6.0-3.aix6.1.ppc.rpm', pty=False)
 
 def put_files():
+    env.shell = '/usr/bin/ksh'
     run('mkdir -p /tmp/itoatools', pty=False)
     put('/opt/tornado/tools/unzip-6.0-3.aix6.1.ppc.rpm', '/tmp/itoatools')
 
 @task
 def add_box():
     execute(check_python)
-	execute(local_task)
+    execute(local_task)
     execute(add_key)
 	
 @task
