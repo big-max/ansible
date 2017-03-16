@@ -115,19 +115,19 @@
       shell: >
         su - "{{ was_user }}" -c 
         "{{ was_inst_path }}/bin/manageprofiles.sh -create -profileName {{ was_profile_name }} -profilePath {{ was_profile_path }}/{{ was_profile_name}}
-        -templatePath {{ was_inst_path }}/profileTemplates/{{ was_profile_type }} -hostName localhost
+        -templatePath {{ was_inst_path }}/profileTemplates/{{ was_profile_type }} -hostName {{ ansible_host }}
         -enableAdminSecurity true -adminUserName {{ was_userid }} -adminPassword {{ was_password }}"
       when: was_profile_type == 'default'
     - name: create WAS profiles with cell profile
       shell: >
         su - "{{ was_user }}" -c
         "{{ was_inst_path }}/bin/manageprofiles.sh -create -profileName Dmgr01 -profilePath {{ was_profile_path }}/Dmgr01
-        -templatePath {{ was_inst_path }}/profileTemplates/cell/dmgr -hostName localhost
+        -templatePath {{ was_inst_path }}/profileTemplates/cell/dmgr -hostName {{ ansible_host }}
         -nodeProfilePath {{ was_profile_path }}/{{ was_profile_name}}
         -enableAdminSecurity true -adminUserName {{ was_userid }} -adminPassword {{ was_password }}
         -cellName Default01Cell -nodeName Default01Node -appServerNodeName Default02Node;
         {{ was_inst_path }}/bin/manageprofiles.sh -create -profileName {{ was_profile_name }} -profilePath {{ was_profile_path }}/{{ was_profile_name}}
-        -templatePath {{ was_inst_path }}/profileTemplates/cell/default -hostName localhost
+        -templatePath {{ was_inst_path }}/profileTemplates/cell/default -hostName {{ ansible_host }}
         -dmgrProfilePath {{ was_profile_path }}/Dmgr01
         -portsFile {{ was_profile_path }}/Dmgr01/properties/portdef.props
         -nodePortsFile {{ was_profile_path }}/Dmgr01/properties/nodeportdef.props
