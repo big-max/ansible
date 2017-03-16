@@ -1,0 +1,246 @@
+---
+- name: Configure ansible inventory
+  hosts: localhost
+  gather_facts: False
+  tasks:
+    - name: Add hosts to the group named target_hosts
+      add_host: >
+        name="{{ item.0 }}" groups=target_hosts ansible_host="{{ item.1 }}"
+      with_together: 
+        - "{{ hostname_list }}"
+        - "{{ ip_list }}"
+
+- name: Modify hostname
+  hosts: target_hosts
+  gather_facts: False
+  tasks:
+    - name: Update the hostname of target servers
+      mod_chhostname: name="{{ inventory_hostname }}"
+   
+- name: Modified hosts file
+  hosts: target_hosts
+  gather_facts: False
+  tasks:          
+    - name: change root ulimit 
+      shell: chuser fsize='-1' data='-1' stack='-1' core='-1' rss='-1' nofiles='-1' root
+    - name: add rhosts file
+      lineinfile: dest=/.rhosts line="+"  create=yes mode=600 state=present
+    - name: add hosts file
+      lineinfile: dest=/etc/hosts regexp='^{{ item.ip }}(\s+){{ item.host }}(\s+)'  line="{{ item.ip }}        {{ item.host }}" state=present backup=yes
+      with_items:
+        - { ip: '{{ ip_list[0] }}',host: '{{ hostname_list[0] }}' }
+        - { ip: '{{ ip_list[1] }}',host: '{{ hostname_list[1] }}' }
+        - { ip: '{{ ha_svceip }}',host: '{{ ha_svcalias }}' }
+    - name: add cluster hosts file
+      lineinfile: dest=/etc/cluster/rhosts regexp='^{{ item }}(\s+)'  line="{{ item }}" state=present backup=yes 
+      with_items:
+         - "{{ hostname_list[0] }}" 
+         - "{{ hostname_list[1] }}" 
+         - "{{ ha_svcalias }}"
+
+- name: build pirmary environment
+  hosts: target_hosts
+  tasks:
+    - block:
+      - name: create primary filesystem for primary
+        mod_db2_mkfs: pv="{{ item.pv }}" vg="{{ item.vg }}" fs="{{ item.fs }}" ppsize="{{ item.ppsize }}"
+        with_items:
+           - { pv: '{{ db2_inst_pv }}', vg: '{{ ha_vgdb2inst }}', fs: '{{ db2_insthome }}', ppsize: '{{ db2_ppsize }}'}
+           - { pv: '{{ db2_data_pv }}', vg: '{{ ha_vgdb2data }}', fs: '{{ db2_dbdatapath }}', ppsize: '{{ db2_ppsize }}'}
+           - { pv: '{{ db2_log_pv }}', vg: '{{ ha_vgdb2log }}', fs: '{{ db2_db2log }}', ppsize: '{{ db2_ppsize }}'}
+           - { pv: '{{ db2_archlog_pv }}', vg: '{{ ha_vgdb2archlog }}', fs: '{{ db2_logarchpath }}', ppsize: '{{ db2_ppsize }}'}
+      - name: create import shell for primary
+        mod_db2_importvg: vg="{{ item.vg }}" fs="{{  item.fs }}" status="import"
+        with_items:
+           - { vg: '{{ ha_vgdb2inst }}', fs: '{{ db2_insthome }}' }
+           - { vg: '{{ ha_vgdb2data }}', fs: '{{ db2_dbdatapath }}' }
+           - { vg: '{{ ha_vgdb2log }}', fs: '{{ db2_db2log }}' }
+           - { vg: '{{ ha_vgdb2archlog }}', fs: '{{ db2_logarchpath }}' }
+      - name: Create DB2 user group for primary
+        group: name="{{ item.name }}" gid="{{ item.id }}"  state=present
+        with_items:
+         - { name: '{{ db2_db2insgrp }}',id: 2000 }
+         - { name: '{{ db2_db2fengrp }}',id: 2001 }
+      - name: Create DB2 user for primary
+        user: name="{{ item.name }}" group="{{ item.group }}" uid="{{ item.id }}" home="{{ item.home }}"  state=present
+        with_items:
+           - { name: '{{ db2_db2insusr }}',group: '{{ db2_db2insgrp }}',id: 2000,home: '{{ db2_insthome }}/{{ db2_db2insusr }}' }
+           - { name: '{{ db2_db2fenusr }}',group: '{{ db2_db2fengrp }}',id: 2001,home: '/home/{{ db2_db2fenusr }}' }
+      - name: Create DB2 path for primary
+        file: path="{{ item }}" state=directory owner="{{ db2_db2insusr }}" group="{{ db2_db2insgrp }}" mode=755
+        with_items:
+          - "{{ db2_insthome }}"
+          - "{{ db2_dbpath }}"
+          - "{{ db2_dbdatapath }}"
+          - "{{ db2_db2log }}"
+          - "{{ db2_logarchpath }}"
+      when: ha_primaryNode == inventory_hostname
+     
+- name: download and uncompress db2 binary
+  hosts: target_hosts
+  tasks:     
+    - name: Create temp download directory
+      file: path="/{{ downloadpath }}/{{ db2_version }}" state=directory mode=755
+    - name: Download DB2 binary files
+      get_url: 
+        url: "ftp://{{ ftp_username }}:{{ ftp_password }}@{{ ftp_server }}/db2/{{ db2_version }}/{{ db2_binary }}"
+        dest: "/{{ downloadpath }}/{{ db2_version }}/{{ db2_binary }}"
+    - name: Download db2 license files
+      get_url: 
+        url: "ftp://{{ ftp_username }}:{{ ftp_password }}@{{ ftp_server }}/db2/{{ db2_version }}/db2ese_c.lic"
+        dest: "/{{ downloadpath }}/{{ db2_version}}/db2ese_c.lic"
+    - name: Decompress DB2 binary file
+      shell: gzip -d "/{{ downloadpath }}/{{ db2_version }}/{{ db2_binary }}"
+    - name: Unarchive DB2 binary file
+      shell: cd "/{{ downloadpath }}/{{ db2_version }}/";tar -xf "/{{ downloadpath }}/{{ db2_version }}/"*.tar
+
+- name: install primary db2 environment
+  hosts: target_hosts
+  tasks: 
+    - block:  
+      - name: Install DB2 binary for primary no 10fp5
+        shell: /"{{ downloadpath }}/{{ db2_version }}"/server*/db2_install -b "{{ db2_db2base }}" -p ese -n -f NOTSAMP
+        when:  db2_version  != "10.5"
+      - name: Install DB2 binary for primary 10fp5
+        shell: /"{{ downloadpath }}/{{ db2_version }}"/server*/db2_install -b "{{ db2_db2base }}" -p  server -n -f NOTSAMP
+        when:  db2_version  == "10.5"
+      - name: Create DB2 instance for primary
+        shell: /"{{ db2_db2base }}"/instance/db2icrt -u "{{ db2_db2fenusr }}" "{{ db2_db2insusr }}"
+      - name: start db2 for primary
+        shell: su - "{{ db2_db2insusr }}" -c "db2start"
+      - name: register license for primary
+        shell: su - "{{ db2_db2insusr }}" -c 'db2licm -a "{{ downloadpath }}/{{ db2_version }}/"db2ese_c.lic'
+      - name: create ha shell script for primary
+        mod_db2_create_shell: inst="{{ db2_db2insusr }}" path="/etc/hacmp" db="{{ db2_dbname }}" hostname="{{ hostname_list[0] }}" homepath="{{ db2_insthome }}"
+      - name: create db2node cfg for primary
+        lineinfile: dest="/{{ db2_insthome }}/{{ db2_db2insusr }}/sqllib/db2nodes.{{ hostname_list[0] }}.cfg"  line="0  {{ hostname_list[0] }}  0" owner="{{ db2_db2insusr }}" group="{{ db2_db2insgrp }}"  create=yes mode=777 state=present 
+      - name: Set db2set value for primary
+        shell: su - "{{ db2_db2insusr }}" -c 'db2set "{{ item.name }}"="{{ item.value }}" '
+        with_items:
+         - { name: DB2COMM,value: '{{ db2_db2comm }}' }
+         - { name: DB2CODEPAGE,value: '{{ db2_db2codepage }}'}
+      - name: Update dbm cfg for primary
+        shell: su - "{{ db2_db2insusr }}" -c 'db2 update dbm cfg using "{{ item.name }}" "{{ item.value }}" '
+        with_items:
+         - { name:  SVCENAME,value: '{{ db2_svcename }}'}
+      - name: Create db for primary
+        shell: su -  "{{ db2_db2insusr }}" -c 'db2 create db "{{ db2_dbname }}" on "{{ db2_dbdatapath }}" dbpath on "{{ db2_dbpath }}"  using codeset "{{ db2_codeset }}" TERRITORY CN pagesize "{{ db2_pagesize }}" K'
+      - name: Update db cfg for primary 
+        shell: su - "{{ db2_db2insusr }}" -c 'db2 update db cfg for "{{ db2_dbname }}" using "{{ item.name }}" "{{ item.value }}"'
+        with_items:
+          - { name: LOCKTIMEOUT,value: '{{ db2_locktimeout }}'}
+          - { name: LOGPRIMARY,value: '{{ db2_logprimary }}'}
+          - { name: LOGSECOND,value: '{{ db2_logsecond }}'}
+          - { name: SOFTMAX,value: '{{ db2_softmax }}'}
+          - { name: TRACKMOD,value: '{{ db2_trackmod }}'}
+          - { name: NEWLOGPATH,value: '{{ db2_db2log }}'}
+          - { name: LOGARCHMETH1,value: "DISK:'{{ db2_logarchpath }}'"}
+          - { name: LOGFILSIZ,value: '{{ db2_logfilesize }}'}
+      - name: restart instance for primary
+        shell: su - "{{ db2_db2insusr }}" -c 'db2stop force;db2start'
+      - name: backup db for primary
+        shell: su - "{{ db2_db2insusr }}" -c 'db2 backup db "{{ db2_dbname }}" to /dev/null'
+      - name: activate db for primary
+        shell: su - "{{ db2_db2insusr }}" -c 'db2 activate  db "{{ db2_dbname }}" '
+      - name: deactivate db for primary
+        shell: su - "{{ db2_db2insusr }}" -c 'db2 deactivate  db "{{ db2_dbname }}" '
+      - name: stop instance for primary
+        shell: su - "{{ db2_db2insusr }}" -c 'db2stop force'
+      - name: exportvg in primary node for primary
+        mod_db2_importvg: vg="{{ item.vg }}" fs="{{  item.fs }}" status="export"
+        with_items:
+           - { vg: '{{ ha_vgdb2inst }}', fs: '{{ db2_insthome }}' }
+           - { vg: '{{ ha_vgdb2data }}', fs: '{{ db2_dbdatapath }}' }
+           - { vg: '{{ ha_vgdb2log }}', fs: '{{ db2_db2log }}' }
+           - { vg: '{{ ha_vgdb2archlog }}', fs: '{{ db2_logarchpath }}' } 
+      when: ha_primaryNode == inventory_hostname  
+
+- name: build standby environment
+  hosts: target_hosts
+  tasks:
+    - block:
+      - name: Create DB2 path for standby
+        file: path="{{ item }}" state=directory  mode=755
+        with_items:
+          - "{{ db2_insthome }}"
+          - "{{ db2_dbpath }}"
+          - "{{ db2_dbdatapath }}"
+          - "{{ db2_db2log }}"
+          - "{{ db2_logarchpath }}"
+      - name: Create DB2 user group for standby
+        group: name="{{ item.name }}" gid="{{ item.id }}"  state=present
+        with_items:
+         - { name: '{{ db2_db2insgrp }}',id: 2000 }
+         - { name: '{{ db2_db2fengrp }}',id: 2001 }
+      - name: Create DB2 user for standby
+        user: name="{{ item.name }}" group="{{ item.group }}" uid="{{ item.id }}" home="{{ item.home }}"  state=present
+        with_items:
+           - { name: '{{ db2_db2insusr }}',group: '{{ db2_db2insgrp }}',id: 2000,home: '{{ db2_insthome }}/{{ db2_db2insusr }}' }
+           - { name: '{{ db2_db2fenusr }}',group: '{{ db2_db2fengrp }}',id: 2001,home: '/home/{{ db2_db2fenusr }}' }
+      - name: Change DB2 path owner for standby
+        file: path="{{ item }}" state=directory owner="{{ db2_db2insusr }}" group="{{ db2_db2insgrp }}" mode=755
+        with_items:
+          - "{{ db2_insthome }}"
+          - "{{ db2_dbpath }}"
+          - "{{ db2_dbdatapath }}"
+          - "{{ db2_db2log }}"
+          - "{{ db2_logarchpath }}" 
+      - name: copy file from primary for standby
+        shell: rcp root@"{{ hostname_list[0] }}":"/tmp/importvg_{{ item }}.ksh" /tmp
+        with_items:
+           - '{{ ha_vgdb2inst }}'
+           - '{{ ha_vgdb2data }}'
+           - '{{ ha_vgdb2log }}'
+           - '{{ ha_vgdb2archlog }}'
+      - name: importvg to standby for standby
+        mod_db2_importvg: vg="{{ item.vg }}" fs="{{  item.fs }}" status="import"
+        with_items:
+           - { vg: '{{ ha_vgdb2inst }}', fs: '{{ db2_insthome }}' }
+           - { vg: '{{ ha_vgdb2data }}', fs: '{{ db2_dbdatapath }}' }
+           - { vg: '{{ ha_vgdb2log }}', fs: '{{ db2_db2log }}' }
+           - { vg: '{{ ha_vgdb2archlog }}', fs: '{{ db2_logarchpath }}' }
+      - name: Install DB2 binary for standby no 10fp5
+        shell: /"{{ downloadpath }}/{{ db2_version }}"/server*/db2_install -b "{{ db2_db2base }}" -p ese -n -f NOTSAMP
+        when:  db2_version  != "10.5"
+      - name: Install DB2 binary for standby 10fp5
+        shell: /"{{ downloadpath }}/{{ db2_version }}"/server*/db2_install -b "{{ db2_db2base }}" -p  server -n -f NOTSAMP
+        when:  db2_version  == "10.5"
+      - name: move sqllib file for standby
+        shell: mv "{{ db2_insthome }}/{{ db2_db2insusr }}/sqllib" "{{ db2_insthome }}/{{ db2_db2insusr }}/sqllib.bak"
+      - name: Create DB2 instance for standby
+        shell: /"{{ db2_db2base }}"/instance/db2icrt -u "{{ db2_db2fenusr }}" "{{ db2_db2insusr }}"
+      - name: start db2 for standby
+        shell: su - "{{ db2_db2insusr }}" -c "db2start"
+      - name: register license for standby
+        shell: su - "{{ db2_db2insusr }}" -c 'db2licm -a "{{ downloadpath }}/{{ db2_version }}/"db2ese_c.lic'
+      - name: Set db2set value for standby
+        shell: su - "{{ db2_db2insusr }}" -c 'db2set "{{ item.name }}"="{{ item.value }}" '
+        with_items:
+          - { name: DB2COMM,value: '{{ db2_db2comm }}' }
+          - { name: DB2CODEPAGE,value: '{{ db2_db2codepage }}'}
+      - name: stop instance for standby
+        shell: su - "{{ db2_db2insusr }}" -c 'db2stop force'
+      - name: rm sqllib file for standby
+        shell: rm -rf "{{ db2_insthome }}/{{ db2_db2insusr }}/sqllib";mv "{{ db2_insthome }}/{{ db2_db2insusr }}/sqllib.bak" "{{ db2_insthome }}/{{ db2_db2insusr }}/sqllib"
+      - name: create ha shell script for standby
+        mod_db2_create_shell: inst="{{ db2_db2insusr }}" path="/etc/hacmp" db="{{ db2_dbname }}" hostname="{{ hostname_list[1] }}" homepath="{{ db2_insthome }}"
+      - name: create db2node cfg for standby
+        lineinfile: dest="/{{ db2_insthome }}/{{ db2_db2insusr }}/sqllib/db2nodes.{{ hostname_list[1] }}.cfg"  line="0  {{ hostname_list[1] }}  0" owner="{{ db2_db2insusr }}" group="{{ db2_db2insgrp }}"   create=yes mode=777 state=present    
+      - name: exportvg in standby node for standby
+        mod_db2_importvg: vg="{{ item.vg }}" fs="{{  item.fs }}" status="export"
+        with_items:
+           - { vg: '{{ ha_vgdb2inst }}', fs: '{{ db2_insthome }}' }
+           - { vg: '{{ ha_vgdb2data }}', fs: '{{ db2_dbdatapath }}' }
+           - { vg: '{{ ha_vgdb2log }}', fs: '{{ db2_db2log }}' }
+           - { vg: '{{ ha_vgdb2archlog }}', fs: '{{ db2_logarchpath }}' } 
+      when: ha_primaryNode != inventory_hostname
+
+- name: create ha environment
+  hosts: target_hosts
+  tasks:
+    - block:
+      - name: restart clmod
+        shell: stopsrc -s clcomd; sleep 2; startsrc -s clcomd
+      - name: create ha
+        mod_db2_ha: clustername="{{ ha_clustername }}" node1="{{ hostname_list[0] }}" node2="{{ hostname_list[1] }}" vgs="{{ ha_vgdb2inst }},{{ ha_vgdb2data }},{{ ha_vgdb2log }},{{ ha_vgdb2archlog }}" rgname="{{ ha_RGName }}" asname="{{ ha_ASName }}" caappv="{{ db2_caapvg_pv }}" service_ip="{{ ha_svceip }}" service_name="{{ ha_svcalias }}"  service_mask="{{ ha_netmask }}" startpolicy="{{ ha_startpolicy }}" fopolicy="{{ ha_fopolicy }}" fbpolicy="{{ ha_fbpolicy }}" db="{{ db2_dbname }}" path="/etc/hacmp"
+      when: ha_primaryNode == inventory_hostname
