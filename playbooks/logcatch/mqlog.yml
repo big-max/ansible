@@ -5,7 +5,7 @@
   strategy: linear
   tasks:
     - name: retrieve mq generic data
-      shell: su - "mqm" -c "/opt/mqm/bin/runmqras -section default -qmlist {{ target }} -outputdir /tmp"
+      shell: su - "mqm" -c "/opt/mqm/bin/runmqras -section default -qmlist {{ target }} -outputdir /tmp" -s "/bin/bash"
     - name: retrieve mq generic data from client
       fetch: src=/tmp/runmqras-{{ ansible_hostname }}.zip dest=/var/log/itoa/scripts/logcatch/mq/{{ task_timestamp }}/{{ inventory_hostname }}.zip flat=yes
 
