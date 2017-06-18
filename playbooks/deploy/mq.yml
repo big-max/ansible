@@ -101,7 +101,7 @@
     - name: Create Queue Managers instance
       shell: >
         /bin/su - "mqm" -c "{{ mq_inst_path }}/bin/crtmqm -md {{ mq_data_path }} -ld {{ mq_log_path }} -lc -lf {{ mq_log_psize }}
-        -lp {{ mq_qmgr_plog }} -ls {{ mq_qmgr_slog }}  {{ mq_qmgr_name }}"
+        -lp {{ mq_qmgr_plog }} -ls {{ mq_qmgr_slog }}  {{ mq_qmgr_name }}" -s "/bin/bash"
       when: mq_qmgr_name != '-'
     - name: Append one blank line to qmini file
       shell: /bin/su - "mqm" -c "echo ' ' >> {{ mq_data_path }}/{{ mq_qmgr_name }}/qm.ini"
@@ -124,7 +124,7 @@
       become_method: su
       when: mq_qmgr_name != '-' and ansible_distribution != 'AIX'
     - name: Create Queue Manager Objects
-      shell: /bin/su - "mqm" -c "echo '{{ item }}' | {{ mq_inst_path }}/bin/runmqsc {{ mq_qmgr_name }}"
+      shell: /bin/su - "mqm" -c "echo '{{ item }}' | {{ mq_inst_path }}/bin/runmqsc {{ mq_qmgr_name }}" -s "/bin/bash"
       with_items:
         - "DEF LSTR(LISTENER01) TRPTYPE(TCP) PORT({{ mq_lstr_port }}) CONTROL(QMGR) REPLACE"
       when: mq_qmgr_name != '-'
@@ -140,10 +140,10 @@
   tasks:
     - block:
        - name: stop QMGRs
-         command: /bin/su - "mqm" -c "{{ mq_inst_path }}/bin/endmqm -i {{ mq_qmgr_name }}"
+         command: /bin/su - "mqm" -c "{{ mq_inst_path }}/bin/endmqm -i {{ mq_qmgr_name }}" -s "/bin/bash"
          register: result
          when: mq_qmgr_name != '-'
        - name: start QMGRs
-         command: /bin/su - "mqm" -c "{{ mq_inst_path }}/bin/strmqm {{ mq_qmgr_name }}"
+         command: /bin/su - "mqm" -c "{{ mq_inst_path }}/bin/strmqm {{ mq_qmgr_name }}" -s "/bin/bash"
          when: result.rc == 0
       when: mq_qmgr_name != '-'
