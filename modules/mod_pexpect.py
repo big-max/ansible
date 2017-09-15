@@ -80,9 +80,29 @@ def ssh_cmd(ip, command):
             ssh.expect('[P|p]assword:')
             ssh.sendline(SECURITY_PASSWORD) 
 
+        '''
+        ssh.expect('SAG>')
+        ssh.sendline('/'+ip)
+        ssh.expect('SAG>')
+        ssh.sendline('2')
         ssh.expect('#')
         ssh.sendline(command)  
         ssh.expect('#')
+        '''
+        
+        ssh.expect('SAG>')
+        ssh.sendline('1')
+        ssh.expect('SAG>')
+        
+        retStr = ssh.before
+        search_Num = re.search(r'([0-9]+):AIX-'+ip, retStr, re.I)
+        ip_Num = search_Num.group(1)
+        
+        ssh.sendline(ip_Num)
+        ssh.expect('#')
+        ssh.sendline(command)  
+        ssh.expect('#')
+        
     except pexpect.EOF:
        print "EOF"
     except pexpect.TIMEOUT:
