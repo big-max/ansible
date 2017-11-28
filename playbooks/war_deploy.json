@@ -1,0 +1,11 @@
+{
+  "file_path" : "/tmp",
+  "file_name" : "iehs.war",
+  "was_user" : "root",
+  "was_profile_home" : "/opt/IBM/WebSphere/AppServer/profiles/AppSrv02",
+  "was_username" : "",
+  "was_password" : "",
+  "app_name" : "iehs",
+  "app_contextroot" : "iehsweb",
+  "deploy_type" : "update"
+}

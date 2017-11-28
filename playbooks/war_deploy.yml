@@ -1,0 +1,52 @@
+---
+#app_deploy.yml: this playook is designed to deploy application to WAS standalone environment, supporting both install or update application
+- name: prepare for application deployment
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: upload application package file
+      copy: src={{ file_path }}/{{ file_name }} dest=/tmp/wasdeploy/ mode=0777
+
+- name: backup ibm was environment
+  hosts: all
+  gather_facts: false
+  become_user: "{{ was_user }}"
+  become: yes
+  become_method: su
+  vars:
+      var_time: "{{ lookup('pipe', 'date +%Y%m%d%H%M%S') }}"
+  tasks:
+    - name: stop ibm was runtime environment
+      command: "{{ was_profile_home }}/bin/stopServer.sh server1 -username {{ was_username }} -password {{ was_password }}"
+    - name: backup ibm was environment files
+      command: "tar -cvf /tmp/wasdeploy/was_{{ var_time }}.tar --exclude 'heapdump*.phd' --exclude 'javacore*.txt' --exclude 'core*.dmp' {{ was_profile_home }}/"
+    - name: start ibm was runtime environment
+      command: "{{ was_profile_home }}/bin/startServer.sh server1"
+  
+- name: deploy application to ibm was 
+  hosts: all
+  gather_facts: false
+  become_user: "{{ was_user }}"
+  become: yes
+  become_method: su
+  tasks:
+    - name: install new application
+      command: >
+        {{ was_profile_home }}/bin/wsadmin.sh -c '$AdminApp install /tmp/wasdeploy/{{ file_name }} {-MapWebModToVH {% raw %}{{{% endraw %} {{ file_name }} {{ file_name }},WEB-INF/web.xml default_host {% raw %} }} {% endraw %} -appname {{ app_name }} -contextroot /{{ app_contextroot }} }' -user {{ was_username }}  -password {{ was_password }}
+      when: deploy_type == 'install'
+    - name: update old application
+      command: >
+        {{ was_profile_home }}/bin/wsadmin.sh -c '$AdminApp update {{ app_name }} app {-operation update -contents /tmp/wasdeploy/{{ file_name }} }' -user {{ was_username }}  -password {{ was_password }}
+      when: deploy_type == 'update'
+  
+- name: restart ibm was environment
+  hosts: all
+  gather_facts: false
+  become_user: "{{ was_user }}"
+  become: yes
+  become_method: su
+  tasks:
+    - name: stop ibm was runtime environment
+      command: "{{ was_profile_home }}/bin/stopServer.sh server1 -username {{ was_username }} -password {{ was_password }}"
+    - name: start ibm was runtime environment
+      command: "{{ was_profile_home }}/bin/startServer.sh server1"
