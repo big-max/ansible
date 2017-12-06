@@ -7,5 +7,6 @@
   "was_password" : "",                        // password of administrative user for ibm was web console
   "app_name" : "iehs",                        // the application name to setup for deployed war file
   "app_contextroot" : "iehsweb",              // the context root for deployed application
-  "deploy_type" : "update"                    // application deployment type: install or update entire application
+  "deploy_type" : "update",                   // application deployment type: install or update entire application
+  "job_timestamp" : "20171206231020"          // the accurate time when job is started
 }
