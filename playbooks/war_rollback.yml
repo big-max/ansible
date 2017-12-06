@@ -13,5 +13,5 @@
       command: "mv {{ was_profile_home }} {{ was_profile_home }}.bak"
     - name: recover ibm was runtime environment
       command: "tar xvf /tmp/wasdeploy/was_{{ job_timestamp }}.tar {{ was_profile_home }}/"
-	  - name: start ibm was runtime environment
+    - name: start ibm was runtime environment
       command: "{{ was_profile_home }}/bin/startServer.sh server1"
