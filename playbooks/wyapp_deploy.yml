@@ -1,0 +1,50 @@
+---
+#app_deploy.yml: this playook is designed to deploy application to WangYin system environment through special centralized monitoring system
+- name: build up ansible inventory
+  hosts: localhost
+  gather_facts: False
+  tasks:
+    - name: create host group for frontend servers
+      add_host: name="{{ frontend_server }}" groups=frontend_hosts
+	- name: create host group for backend servers
+      add_host: name="{{ item.0 }}" groups=backend_hosts
+      with_item: "{{ backend_servers }}"
+
+- name: deploy app code to the frontend central point
+  hosts: frontend_hosts
+  gather_facts: false
+  strategy: linear
+  become_user: "{{ was_user }}"
+  become: yes
+  become_method: su
+  vars:
+      var_time: "{{ lookup('pipe', 'date +%Y%m%d%H%M%S') }}"
+  tasks:
+    - name: stop file sync service from central point to all backend was nodes
+	  command: 
+	  with_items:
+        - "{{ appserver_list }}"
+    - name: backup current app code on central point
+      command: "tar -cvf /tmp/was_{{ var_time }}.tar {{ app_path }}/"
+	- name: upload application package file
+      copy: src={{ file_path }}/{{ file_name }} dest={{ app_path }} mode=0777
+    - name: unpack new app code to particular folder
+      command: "jar -xvf {{ file_name }}"
+  
+- name: deploy app code to the backend appserver one by one
+  hosts: backend_hosts
+  gather_facts: false
+  strategy: serial
+  become_user: "{{ was_user }}"
+  become: yes
+  become_method: su
+  tasks:
+    - name: stop ibm was runtime environment
+      command: "{{ was_profile_home }}/bin/stopServer.sh {{ app_server }} -username {{ was_username }} -password {{ was_password }}"
+    - name: start sync service on the frontend central point
+      command: 
+	  delegate_to: {{ frontend_server }}
+	- name: wait 15 seconds for sync operation to be completed
+	  wait_for: timeout=15
+	- name: start ibm was runtime environment
+      command: "{{ was_profile_home }}/bin/startServer.sh {{ app_server }}"
