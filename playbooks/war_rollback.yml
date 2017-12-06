@@ -1,0 +1,17 @@
+---
+#war_rollback.yml: this playook is designed to rollback application to version before change
+- name: recover ibm was environment from backup version
+  hosts: all
+  gather_facts: false
+  become_user: "{{ was_user }}"
+  become: yes
+  become_method: su
+  tasks:
+    - name: stop ibm was runtime environment
+      command: "{{ was_profile_home }}/bin/stopServer.sh server1 -username {{ was_username }} -password {{ was_password }}"
+    - name: rename ibm was environment files
+      command: "mv {{ was_profile_home }} {{ was_profile_home }}.bak"
+    - name: recover ibm was runtime environment
+      command: "tar xvf /tmp/wasdeploy/was_{{ job_timestamp }}.tar {{ was_profile_home }}/"
+	  - name: start ibm was runtime environment
+      command: "{{ was_profile_home }}/bin/startServer.sh server1"
