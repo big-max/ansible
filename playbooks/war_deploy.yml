@@ -19,7 +19,7 @@
     - name: stop ibm was runtime environment
       command: "{{ was_profile_home }}/bin/stopServer.sh server1 -username {{ was_username }} -password {{ was_password }}"
     - name: backup ibm was environment files
-      command: "tar -cvf /tmp/wasdeploy/was_{{ var_time }}.tar --exclude 'heapdump*.phd' --exclude 'javacore*.txt' --exclude 'core*.dmp' {{ was_profile_home }}/"
+      command: "tar -cvf /tmp/wasdeploy/was_{{ var_time }}.tar {{ was_profile_home }}/installedApps/"
     - name: start ibm was runtime environment
       command: "{{ was_profile_home }}/bin/startServer.sh server1"
   
@@ -32,7 +32,7 @@
   tasks:
     - name: install new application
       command: >
-        {{ was_profile_home }}/bin/wsadmin.sh -c '$AdminApp install /tmp/wasdeploy/{{ file_name }} {-MapWebModToVH {% raw %}{{{% endraw %} {{ file_name }} {{ file_name }},WEB-INF/web.xml default_host {% raw %} }} {% endraw %} -appname {{ app_name }} -contextroot /{{ app_contextroot }} }' -user {{ was_username }}  -password {{ was_password }}
+        {{ was_profile_home }}/bin/wsadmin.sh -c '$AdminApp install /tmp/wasdeploy/{{ file_name }} {-MapWebModToVH {% raw %}{{{% endraw %} {{ file_name | regex_replace('.war') }} {{ file_name }},WEB-INF/web.xml default_host {% raw %} }} {% endraw %} -appname {{ app_name }} -contextroot /{{ app_contextroot }} }' -user {{ was_username }}  -password {{ was_password }}
       when: deploy_type == 'install'
     - name: update old application
       command: >
