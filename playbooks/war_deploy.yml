@@ -13,13 +13,11 @@
   become_user: "{{ was_user }}"
   become: yes
   become_method: su
-  vars:
-      var_time: "{{ lookup('pipe', 'date +%Y%m%d%H%M%S') }}"
   tasks:
     - name: stop ibm was runtime environment
       command: "{{ was_profile_home }}/bin/stopServer.sh server1 -username {{ was_username }} -password {{ was_password }}"
     - name: backup ibm was environment files
-      command: "tar -cvf /tmp/wasdeploy/was_{{ var_time }}.tar {{ was_profile_home }}/installedApps/"
+      command: "tar -cvf /tmp/wasdeploy/was_{{ job_timestamp }}.tar {{ was_profile_home }}/installedApps/"
     - name: start ibm was runtime environment
       command: "{{ was_profile_home }}/bin/startServer.sh server1"
   
