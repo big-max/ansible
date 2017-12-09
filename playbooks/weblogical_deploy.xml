@@ -1,0 +1,26 @@
+---
+#app_deploy.yml: this playook is designed to deploy application to WAS standalone environment, supporting both install or update application
+- name: prepare for application deployment
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: upload application package file
+      copy: src={{ file_path }}/{{ file_name }} dest=/tmp/wardeploy/ mode=0777
+  
+- name: deploy application to ibm was 
+  hosts: all
+  gather_facts: false
+  become_user: "{{ was_user }}"
+  become: yes
+  become_method: su
+  vars:
+    var_time: "{{ lookup('pipe', 'date +%Y%m%d%H%M%S') }}"
+  tasks:
+    - name: stop weblogic server
+      command: "{{ was_profile_home }}/bin/stopServer.sh server1 -username {{ was_username }} -password {{ was_password }}"
+    - name: backup current appication
+      command: "tar -cvf /tmp/wardeploy/wlg_{{ var_time }}.tar /weblogic/xduat/cmis-main"
+	- name: deploy new version code
+	  command: "/usr/java6_64/bin/jar xvf /tmp/wardeploy/{{ file_name }} /weblogic/xduat/"
+	- name: start weblogic server
+    command: "{{ was_profile_home }}/bin/stopServer.sh server1 -username {{ was_username }} -password {{ was_password }}"
