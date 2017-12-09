@@ -20,7 +20,7 @@
       command: "{{ was_profile_home }}/bin/stopServer.sh server1 -username {{ was_username }} -password {{ was_password }}"
     - name: backup current appication
       command: "tar -cvf /tmp/wardeploy/wlg_{{ var_time }}.tar /weblogic/xduat/cmis-main"
-	- name: deploy new version code
-	  command: "/usr/java6_64/bin/jar xvf /tmp/wardeploy/{{ file_name }} /weblogic/xduat/"
-	- name: start weblogic server
-    command: "{{ was_profile_home }}/bin/stopServer.sh server1 -username {{ was_username }} -password {{ was_password }}"
+    - name: deploy new version code
+      command: "/usr/java6_64/bin/jar xvf /tmp/wardeploy/{{ file_name }} /weblogic/xduat/"
+    - name: start weblogic server
+      command: "{{ was_profile_home }}/bin/stopServer.sh server1 -username {{ was_username }} -password {{ was_password }}"
