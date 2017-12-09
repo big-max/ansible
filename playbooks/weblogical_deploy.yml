@@ -23,4 +23,4 @@
     - name: deploy new version code
       command: "/usr/java6_64/bin/jar xvf /tmp/wardeploy/{{ file_name }} /weblogic/xduat/"
     - name: start weblogic server
-command: "{{ was_profile_home }}/bin/stopServer.sh server1 -username {{ was_username }} -password {{ was_password }}"
+      command: "{{ was_profile_home }}/bin/stopServer.sh server1 -username {{ was_username }} -password {{ was_password }}"
