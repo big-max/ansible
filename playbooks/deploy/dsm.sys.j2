@@ -1,0 +1,32 @@
+************************************************************************
+*                                                                      *
+* Sample Client System Options file for UNIX (dsm.sys.smp)             *
+************************************************************************
+
+*  This file contains the minimum options required to get started
+*  using the Backup-Archive Client.  Copy dsm.sys.smp to dsm.sys.
+*  In the dsm.sys file, enter the appropriate values for each option
+*  listed below and remove the leading asterisk (*) for each one.
+
+*  If your client node communicates with multiple servers, be
+*  sure to add a stanza, beginning with the SERVERNAME option, for
+*  each additional server.
+
+************************************************************************
+
+SErvername {{ tsm_server }}
+  COMMMethod {{ tsm_method }} 
+  TCPPort {{ tsm_port }}
+  TCPServeraddress {{ tsm_address }}
+  Passwordaccess {{ tsm_access }}
+  managedservices {{ tsm_service }}
+  nodename {% if item[0] == 'ba/bin' %}{{ tsm_nodename }}_fs
+  {% else %}{{ tsm_nodename }}_db
+  {% endif -%}
+  errorlogname {% if item[0] == 'ba/bin' %}{{ tsm_baerrorlog }}_fs
+  {% else %}{{ tsm_apierrorlog }}_db
+  {% endif -%}
+  enablelanfree {{ tsm_lanfree }}
+  lanfreecommmethod {{ tsm_lanfreemethod }}
+  lanfreetcpserveraddress {{ tsm_lanfreeaddress }}
+  lanfreetcpport {{ tsm_lanfreeport }}
