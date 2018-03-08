@@ -1,0 +1,25 @@
+{
+    "downloadpath": "/tmp/tsmclient",
+    "tsm_version": "8.1",
+    "tsm_binary": "SP_CLIENT_8.1.4_LIN86_M.tar.gz",
+    "tsm_fp": "-",
+    "tsm_path": "",
+    "ftp_user": "itoa",
+    "ftp_password": "itoa",
+    "ftp_server": "192.168.230.135",
+   
+    "tsm_instpath": "/opt/tivoli/tsm/client",
+    "tsm_server": "192.168.230.100",
+    "tsm_method": "TCPIP",
+    "tsm_port": "1550",
+    "tsm_address": "10.0.244.20",
+    "tsm_access": "generate",
+    "tsm_service": "schedule webclien",    
+    "tsm_nodename": "hammdbp01",
+    "tsm_baerrorlog": "/opt/tivoli/tsm/client/ba/bin/dsmerror.log",
+    "tsm_apierrorlog": "/opt/tivoli/tsm/client/api/bin64/dsierror.log",
+    "tsm_lanfree": "yes",
+    "tsm_lanfreemethod": "TCPIP",
+    "tsm_lanfreeaddress": "127.0.0.1",
+    "tsm_lanfreeport": "1500"
+}
