@@ -22,4 +22,7 @@
     "tsm_lanfreemethod": "TCPIP",
     "tsm_lanfreeaddress": "127.0.0.1",
     "tsm_lanfreeport": "1500"
+    "tsm_utilization": "1",
+    "tsm_include": "abc",
+    "tsm_exclude": "def"
 }
