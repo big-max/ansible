@@ -1,0 +1,60 @@
+---
+#tsm_client.yml: this playbook is used for installing and configuring tsm client
+- name: Install Environment
+  hosts: all
+  gather_facts: False
+  tasks:
+    - name: Create temp download directory
+      file: path="{{ downloadpath }}/{{ tsm_version }}/fp" state=directory mode=0755
+    - name: Download TSM Client binary file  
+      get_url:    
+        url: "ftp://{{ ftp_user }}:{{ ftp_password }}@{{ ftp_server }}/tsm/{{ tsm_version }}/{{ tsm_binary }}"
+        dest: "{{ downloadpath }}/{{ tsm_version }}"
+        timeout: 100 
+    - name: Uncompress TSM Client binary file 
+      shell: gzip -d -f "{{ downloadpath }}/{{ tsm_version }}/{{ tsm_binary }}";tar -xf *.tar chdir="{{ downloadpath }}/{{ tsm_version }}"
+    - name: Download TSM Client fixpack files
+      get_url: 
+        url: "ftp://{{ ftp_user }}:{{ ftp_password }}@{{ ftp_server }}/tsm/{{ tsm_version }}/{{ tsm_fp }}"
+        dest: "{{ downloadpath }}/{{ tsm_version }}/fp"
+        timeout: 100
+      when: tsm_fp != '-' 
+    - name: Uncompress TSM Client fixpack files
+      shell: gzip -d -f "{{ downloadpath }}/{{ tsm_version }}/{{ tsm_binary }}/fp";tar -xf *.tar chdir="{{ downloadpath }}/{{ tsm_version }}/fp"
+      when: tsm_fp != '-'
+    - block:
+       - name: Install TSM Client binary for Linux 
+         shell: rpm -ivh "{{ downloadpath }}/{{ tsm_version }}/TSMCLI_LNX/tsmcli/linux86/{{ item }}"
+         with_items:
+           - "gsk*"
+           - "TIVsm-API64.x86_64.rpm"
+           - "TIVsm-BA.x86_64.rpm"
+       - name: Install TSM Client fixpack
+         shell: echo "coming soon..."
+         when: tsm_fp != '-'
+      when: ansible_distribution != 'AIX'
+    - block:
+       - name: Install TSM Client binary for Linux
+         shell: echo "coming soon..." 
+       - name: Install TSM Client fixpack
+         shell: echo "coming soon..."
+         when: tsm_fp != '-'
+      when: ansible_distribution == 'AIX'
+
+- name: Configure Environment
+  hosts: all
+  gather_facts: true
+  tasks:
+    - name: upload and render template files
+      template: src={{ item[1] }}.j2 dest={{ tsm_instpath }}/{{ item[0] }}/{{ item[1] }} owner=root group=bin mode='0666'
+      with_nested:
+        - ["ba/bin", "api/bin64"]
+        - ["dsm.opt", "dsm.sys"] 
+      when: ansible_distribution != 'AIX'
+
+    - name: upload and render template files
+      template: src={{ item[1] }}.j2 dest={{ tsm_instpath }}/{{ item[0] }}/{{ item[1] }} owner=root group=bin mode='0666'
+      with_nested:
+        - ["ba/bin64", "api/bin64"]
+        - ["dsm.opt", "dsm.sys"]
+      when: ansible_distribution == 'AIX'
