@@ -5,7 +5,7 @@
   gather_facts: False
   tasks:
     - name: Add hosts to the group named target_hosts
-      add_host: name="{{ item.0 }}" groups=target_hosts
+      add_host: name="{{ item }}" groups=target_hosts
       with_items: 
         - "{{ ip_list }}"
         
