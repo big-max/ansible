@@ -80,7 +80,8 @@
       with_items:
         - "{{ mq_data_path }}"
         - "{{ mq_log_path }}"
-
+      when: mq_qmgr_name != '-'
+      
 - name: Build Environment
   hosts: target_hosts
   gather_facts: True
