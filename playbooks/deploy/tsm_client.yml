@@ -29,7 +29,7 @@
         timeout: 100
       when: tsm_fp != '-' 
     - name: Uncompress TSM Client fixpack files
-      shell: gzip -d -f "{{ downloadpath }}/{{ tsm_version }}/{{ tsm_binary }}/fp";tar -xf *.tar chdir="{{ downloadpath }}/{{ tsm_version }}/fp"
+      shell: gzip -d -f "{{ downloadpath }}/{{ tsm_version }}/fp/{{ tsm_fp }}";tar -xf *.tar chdir="{{ downloadpath }}/{{ tsm_version }}/fp"
       when: tsm_fp != '-'
     - block:
        - name: Install TSM Client binary for Linux 
@@ -43,8 +43,8 @@
          when: tsm_fp != '-'
       when: ansible_distribution != 'AIX'
     - block:
-       - name: Install TSM Client binary for Linux
-         shell: echo "coming soon..." 
+       - name: Install TSM Client binary for AIX
+         shell: installp -acgXYd . all chdir="{{ downloadpath }}/{{ tsm_version }}/TSMCLI_AIX/usr/sys/inst.images"
        - name: Install TSM Client fixpack
          shell: echo "coming soon..."
          when: tsm_fp != '-'
